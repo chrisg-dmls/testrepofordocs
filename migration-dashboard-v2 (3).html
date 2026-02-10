@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-view="detail">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zendesk → JSM Migration Timeline</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #10b981;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --green-glow: rgba(16,185,129,0.25);
+    --blue-glow: rgba(59,130,246,0.25);
+    --purple-glow: rgba(139,92,246,0.25);
+    --cyan-glow: rgba(6,182,212,0.25);
+    --amber-glow: rgba(245,158,11,0.25);
+    --red-glow: rgba(239,68,68,0.2);
+    --transition: 0.35s cubic-bezier(0.4,0,0.2,1);
+    --phase-colors: var(--green), var(--blue), var(--purple), var(--cyan), var(--amber), var(--red);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0a0e17;
+    --surface: #121929;
+    --surface-hover: #1a2338;
+    --border: #1e2a42;
+    --border-light: #253352;
+    --text: #e2e8f0;
+    --text-muted: #7a8ba8;
+    --text-heading: #e2e8f0;
+    --grid-color: rgba(59,130,246,0.03);
+    --bubble-bg: transparent;
+    --toolbar-bg: rgba(10,14,23,0.9);
+    --toolbar-border: rgba(30,42,66,0.8);
+    --modal-bg: rgba(0,0,0,0.6);
+    --input-bg: #0f1420;
+    --drag-ghost: rgba(59,130,246,0.1);
+    --drag-border: var(--blue);
+  }
+
+  [data-theme="light"] {
+    --bg: #f8f9fc;
+    --surface: #ffffff;
+    --surface-hover: #f5f7fb;
+    --border: #e2e6ee;
+    --border-light: #d0d5e0;
+    --text: #1a1e2e;
+    --text-muted: #6b7280;
+    --text-heading: #1a1e2e;
+    --grid-color: rgba(59,130,246,0.04);
+    --bubble-bg: #fff;
+    --toolbar-bg: rgba(248,249,252,0.9);
+    --toolbar-border: rgba(226,230,238,0.8);
+    --modal-bg: rgba(0,0,0,0.35);
+    --input-bg: #f1f3f8;
+    --drag-ghost: rgba(59,130,246,0.06);
+    --drag-border: var(--blue);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ============ TOOLBAR ============ */
+  .toolbar {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    display: flex;
+    gap: 6px;
+    background: var(--toolbar-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--toolbar-border);
+    border-radius: 14px;
+    padding: 5px;
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .toolbar-btn:hover { background: var(--surface); color: var(--text); }
+  .toolbar-btn.active { background: var(--blue); color: #fff; box-shadow: 0 2px 8px var(--blue-glow); }
+  .toolbar-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .toolbar-divider {
+    width: 1px;
+    background: var(--border);
+    margin: 4px 2px;
+  }
+
+  /* ============ CONTAINER ============ */
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ============ HEADER ============ */
+  .header {
+    text-align: center;
+    margin-bottom: 44px;
+    animation: fadeDown 0.5s ease-out;
+  }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 20px;
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .header-badge .pulse-dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .header h1 {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+    color: var(--text-heading);
+    transition: color var(--transition);
+  }
+  .header h1 span {
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header p {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* Deadline strip */
+  .deadline-strip {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 44px;
+    flex-wrap: wrap;
+    animation: fadeDown 0.5s ease-out 0.1s both;
+  }
+
+  .deadline-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .deadline-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .deadline-dot.green { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+  .deadline-dot.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber-glow); }
+  .deadline-dot.red   { background: var(--red);   box-shadow: 0 0 8px var(--red-glow); }
+
+  .deadline-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+  }
+  .deadline-date {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    transition: color var(--transition);
+  }
+
+  /* ============ DETAIL VIEW ============ */
+  .detail-view { display: block; }
+  .timeline-view { display: none; }
+  [data-view="timeline"] .detail-view { display: none; }
+  [data-view="timeline"] .timeline-view { display: block; }
+
+  /* Progress */
+  .progress-section {
+    margin-bottom: 44px;
+    animation: fadeDown 0.5s ease-out 0.2s both;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .progress-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .progress-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  .progress-track {
+    height: 6px;
+    background: var(--surface);
+    border-radius: 100px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--cyan));
+    border-radius: 100px;
+    transition: width 0.6s ease-out;
+  }
+
+  /* Vertical timeline */
+  .v-timeline { position: relative; }
+
+  .v-timeline-line {
+    position: absolute;
+    left: 27px;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--blue), var(--purple), var(--red));
+    opacity: 0.15;
+  }
+
+  /* Phase */
+  .phase {
+    position: relative;
+    margin-bottom: 32px;
+    animation: fadeUp 0.4s ease-out both;
+  }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .phase-bubble {
+    position: relative;
+    z-index: 2;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .phase:hover .phase-bubble { transform: scale(1.08); }
+
+  /* "You are here" — sits to the left of the bubble */
+  .here-indicator {
+    display: flex;
+    align-items: center;
+    flex-direction: row-reverse;
+    gap: 8px;
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translate(-100%, -50%);
+    z-index: 5;
+  }
+
+  .here-indicator .here-arrow {
+    width: 16px;
+    height: 2px;
+    background: var(--green);
+    border-radius: 2px;
+    position: relative;
+  }
+
+  .here-indicator .here-arrow::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 5px solid var(--green);
+  }
+
+  .here-tag {
+    background: var(--green);
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    animation: pulse 2s ease-in-out infinite;
+    cursor: pointer;
+  }
+
+  .here-tag:hover { opacity: 0.85; }
+
+  .you-are-here .phase-bubble::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    animation: ringPulse 2s ease-in-out infinite;
+  }
+
+  .phase-title-group { flex: 1; min-width: 0; }
+
+  .phase-dates {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    cursor: pointer;
+    padding: 2px 4px;
+    margin: -2px -4px 0;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .phase-dates:hover { background: var(--surface-hover); }
+
+  .phase-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 4px;
+    transition: background 0.15s, color var(--transition);
+  }
+  .phase-title:hover { background: var(--surface-hover); }
+
+  .phase-card {
+    margin-left: 70px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    transition: border-color 0.2s, background var(--transition);
+  }
+
+  .phase:hover .phase-card { border-color: rgba(59,130,246,0.15); }
+
+  /* Milestones */
+  .milestone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    border-radius: 8px;
+    cursor: grab;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .milestone:active { cursor: grabbing; }
+  .milestone:hover { background: var(--drag-ghost); }
+
+  .milestone + .milestone {
+    border-top: 1px solid var(--border);
+  }
+
+  .milestone-drag {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    padding: 4px 2px;
+    cursor: grab;
+  }
+
+  .milestone:hover .milestone-drag { opacity: 0.4; }
+
+  .milestone-drag span {
+    width: 12px;
+    height: 2px;
+    background: var(--text-muted);
+    border-radius: 2px;
+  }
+
+  .milestone-check {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .milestone-check:hover { border-color: var(--green); }
+  .milestone-check.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .milestone-check.done::after {
+    content: '✓';
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .milestone-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    cursor: text;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.15s, color var(--transition);
+    min-width: 0;
+  }
+  .milestone-text:hover { background: var(--surface-hover); }
+  .milestone-text.done-text {
+    color: var(--text-muted);
+    text-decoration: line-through;
+    text-decoration-color: rgba(122,139,168,0.4);
+  }
+
+  .milestone-delete {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 16px;
+    line-height: 1;
+    transition: opacity 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .milestone:hover .milestone-delete { opacity: 0.6; }
+  .milestone-delete:hover { opacity: 1 !important; background: var(--red-glow); }
+
+  /* Add milestone button */
+  .add-milestone-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    border-top: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s;
+    margin-top: 2px;
+  }
+  .add-milestone-btn:hover { color: var(--blue); }
+  .add-milestone-btn svg { width: 14px; height: 14px; }
+
+  /* Add phase button */
+  .add-phase-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 16px;
+    margin-top: 12px;
+    background: none;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .add-phase-btn:hover { color: var(--blue); border-color: var(--blue); }
+  .add-phase-btn svg { width: 16px; height: 16px; }
+
+  /* Delete phase */
+  .phase-delete {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: opacity 0.15s, background 0.15s;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .phase-header:hover .phase-delete { opacity: 0.5; }
+  .phase-delete:hover { opacity: 1 !important; background: var(--red-glow); }
+
+  /* Drag states */
+  .milestone.dragging {
+    opacity: 0.4;
+  }
+
+  .phase-card.drag-over {
+    border-color: var(--blue) !important;
+    background: var(--drag-ghost) !important;
+  }
+
+  /* Editable fields */
+  .editable-input {
+    background: var(--input-bg);
+    border: 1px solid var(--blue);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    padding: 4px 8px;
+    outline: none;
+    width: 100%;
+    box-shadow: 0 0 0 3px var(--blue-glow);
+  }
+
+  .phase-title .editable-input {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .phase-dates .editable-input {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+
+  .milestone-text .editable-input {
+    font-size: 14px;
+  }
+
+  /* ============ TIMELINE VIEW ============ */
+  .h-timeline-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1060px;
+    padding: 0 40px;
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .h-timeline-track {
+    position: absolute;
+    top: 50%;
+    left: 40px; right: 40px;
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--green), var(--blue), var(--purple), var(--cyan), var(--amber), var(--red), #ec4899);
+    transform: translateY(-50%);
+    z-index: 1;
+  }
+
+  .h-timeline-track::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--green), var(--blue), var(--purple), var(--cyan), var(--amber), var(--red), #ec4899);
+    opacity: 0.15;
+    filter: blur(6px);
+    z-index: -1;
+  }
+
+  .h-timeline-nodes {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    min-height: 380px;
+  }
+
+  .h-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex: 1;
+  }
+
+  .h-bubble {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 3px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    transition: transform 0.25s, box-shadow 0.25s, background var(--transition);
+    cursor: default;
+  }
+  .h-node:hover .h-bubble { transform: translateY(-50%) scale(1.12); }
+
+  .h-bubble-inner {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: currentColor;
+  }
+
+  .h-node:nth-child(1) { color: var(--green); }
+  .h-node:nth-child(2) { color: var(--blue); }
+  .h-node:nth-child(3) { color: var(--purple); }
+  .h-node:nth-child(4) { color: var(--cyan); }
+  .h-node:nth-child(5) { color: var(--amber); }
+  .h-node:nth-child(6) { color: var(--red); }
+  .h-node:nth-child(7) { color: #ec4899; }
+  .h-node:nth-child(8) { color: var(--blue); }
+  .h-node:nth-child(7):hover .h-bubble { box-shadow: 0 0 0 6px rgba(236,72,153,0.15); }
+  .h-node:nth-child(8):hover .h-bubble { box-shadow: 0 0 0 6px rgba(59,130,246,0.15); }
+
+  .h-connector {
+    position: absolute;
+    width: 2px;
+    background: currentColor;
+    opacity: 0.2;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .h-label-card {
+    position: absolute;
+    width: 148px;
+    text-align: center;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .h-label-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: currentColor;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .h-label-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+    margin-bottom: 3px;
+    transition: color var(--transition);
+  }
+
+  .h-label-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .h-node.above .h-label-card { bottom: calc(50% + 50px); }
+  .h-node.above .h-connector  { bottom: calc(50% + 26px); height: 24px; }
+  .h-node.below .h-label-card { top: calc(50% + 50px); }
+  .h-node.below .h-connector  { top: calc(50% + 26px); height: 24px; }
+
+  .h-here-ring {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    animation: ringPulse 2s ease-in-out infinite;
+  }
+
+  .h-here-label {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--green);
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .h-here-label::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--green);
+  }
+
+  /* For "above" nodes, move the here-label below the bubble instead */
+  .h-node.above .h-here-label {
+    bottom: auto;
+    top: calc(100% + 10px);
+  }
+  .h-node.above .h-here-label::after {
+    bottom: auto;
+    top: -4px;
+    border-top: none;
+    border-bottom: 4px solid var(--green);
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 36px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-dot.filled { background: var(--green); }
+  .legend-dot.open { background: transparent; border: 2px solid var(--text-muted); }
+  .legend-dot.target { background: transparent; border: 2px solid var(--amber); }
+  .legend-dot.deadline-d { background: transparent; border: 2px solid var(--red); }
+
+  /* Footer */
+  .footer-note {
+    text-align: center;
+    margin-top: 36px;
+    padding: 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .footer-note strong { color: var(--amber); }
+
+  /* ============ ANIMATIONS ============ */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
+  @keyframes ringPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(1.1); }
+  }
+
+  .view-fade-enter { animation: fadeIn 0.3s ease-out; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .h-timeline-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .h-timeline-nodes { min-width: 900px; }
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 56px 16px 60px; }
+    .header h1 { font-size: 24px; }
+    .deadline-strip { flex-direction: column; gap: 10px; align-items: center; }
+    .phase-card { margin-left: 60px; padding: 12px; }
+    .phase-bubble { width: 44px; height: 44px; font-size: 11px; }
+    .phase-title { font-size: 16px; }
+    .toolbar { top: auto; bottom: 16px; right: 50%; transform: translateX(50%); }
+    .here-indicator { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <button class="toolbar-btn active" id="btn-detail" onclick="switchView('detail')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    Detail
+  </button>
+  <button class="toolbar-btn" id="btn-timeline" onclick="switchView('timeline')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    Timeline
+  </button>
+  <div class="toolbar-divider"></div>
+  <button class="toolbar-btn" id="btn-theme" onclick="toggleTheme()">
+    <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <span id="theme-label">Light</span>
+  </button>
+</div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">
+      <span class="pulse-dot"></span>
+      Migration in Progress
+    </div>
+    <h1>Zendesk → <span>JSM</span> Migration</h1>
+    <p>Support team conversion roadmap &nbsp;·&nbsp; Feb 10 – Mar 17, 2026</p>
+  </div>
+
+  <div class="deadline-strip">
+    <div class="deadline-item"><div class="deadline-dot green"></div><div><div class="deadline-label">Today</div><div class="deadline-date">Feb 10</div></div></div>
+    <div class="deadline-item"><div class="deadline-dot amber"></div><div><div class="deadline-label">Everything Operational</div><div class="deadline-date">Feb 27</div></div></div>
+    <div class="deadline-item"><div class="deadline-dot amber"></div><div><div class="deadline-label">Full Cutover</div><div class="deadline-date">Mar 9</div></div></div>
+    <div class="deadline-item"><div class="deadline-dot red"></div><div><div class="deadline-label">Contract Expires</div><div class="deadline-date">Mar 17</div></div></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div class="detail-view" id="detail-view">
+    <div class="progress-section">
+      <div class="progress-header">
+        <span class="progress-label">Overall Progress</span>
+        <span class="progress-pct" id="progress-text">1 of 11 complete</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
+    </div>
+    <div class="v-timeline" id="v-timeline">
+      <div class="v-timeline-line"></div>
+    </div>
+  </div>
+
+  <!-- TIMELINE VIEW -->
+  <div class="timeline-view" id="timeline-view">
+    <div class="h-timeline-wrapper">
+      <div class="h-timeline-track"></div>
+      <div class="h-timeline-nodes" id="h-timeline-nodes"></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot filled"></div> Complete</div>
+      <div class="legend-item"><div class="legend-dot open"></div> Upcoming</div>
+      <div class="legend-item"><div class="legend-dot target"></div> Operational (Feb 27)</div>
+      <div class="legend-item"><div class="legend-dot deadline-d"></div> Cutover (Mar 9) / Contract (Mar 17)</div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Last updated: <strong>February 10, 2026</strong> &nbsp;·&nbsp; 17 days to operational &nbsp;·&nbsp; 27 days to full cutover &nbsp;·&nbsp; 35 days to contract expiry
+  </div>
+
+</div>
+
+<script>
+// =========================================================
+//  DATA MODEL
+// =========================================================
+const COLORS = ['green','blue','purple','cyan','amber','red','pink'];
+const COLOR_MAP = {
+  green: 'var(--green)', blue: 'var(--blue)', purple: 'var(--purple)',
+  cyan: 'var(--cyan)', amber: 'var(--amber)', red: 'var(--red)',
+  pink: '#ec4899',
+};
+const GLOW_MAP = {
+  green: 'var(--green-glow)', blue: 'var(--blue-glow)', purple: 'var(--purple-glow)',
+  cyan: 'var(--cyan-glow)', amber: 'var(--amber-glow)', red: 'var(--red-glow)',
+  pink: 'rgba(236,72,153,0.25)',
+};
+
+let data = {
+  youAreHere: 0,
+  phases: [
+    {
+      title: 'Immediate Setup',
+      dates: 'Feb 10 – Feb 11',
+      desc: 'Seats, metrics, status decisions',
+      milestones: [
+        { text: 'Add seats for rest of support team (Today)', done: false },
+        { text: 'Update metrics excel sheet for support (Chris) — today', done: false },
+        { text: 'Decide standardized statuses by Feb 11', done: false },
+      ]
+    },
+    {
+      title: 'Configuration & Review',
+      dates: 'Feb 11 – Feb 13',
+      desc: 'Statuses, invoices, Lynne\'s workflow',
+      milestones: [
+        { text: 'Implement standardized statuses by Feb 13', done: false },
+        { text: 'Zendesk invoices and seat count reviewed by Feb 13', done: false },
+        { text: 'Figure out where Lynne\'s stuff is before transition — where does she work out of? (training@support?) by Feb 13', done: false },
+      ]
+    },
+    {
+      title: 'Audit & Macros',
+      dates: 'Feb 14 – Feb 18',
+      desc: 'Zendesk audit, macro migration',
+      milestones: [
+        { text: 'Audit Zendesk — add usage metrics to the Zendesk excel sheet by Feb 18', done: false },
+        { text: 'Add macros to JSM by Feb 18', done: false },
+        { text: 'See if we can capture Macro usage data from JSM (no due date — note for internal tracking)', done: false },
+      ]
+    },
+    {
+      title: 'Training & Drip Migration',
+      dates: 'Feb 18 – Feb 20',
+      desc: 'Agent training, begin email drip into JSM',
+      milestones: [
+        { text: 'Training and knowledge transfer for support by Feb 20 — ensure trainings are recorded and a Confluence doc is created (potential 3 sessions Feb 18–20)', done: false },
+        { text: 'Cherry pick 1–3 email boxes (i.e. Super users) to drip into JSM by Feb 20', done: false },
+      ]
+    },
+    {
+      title: 'Final Prep & Go Operational',
+      dates: 'Feb 20 – Feb 27',
+      desc: 'Reference docs, everything operational',
+      milestones: [
+        { text: 'Reference page created for historical Zendesk emails by Feb 25', done: false },
+        { text: 'Aim to have everything operational by Feb 27', done: false },
+      ]
+    },
+    {
+      title: '🎯 Full Cutover to JSM',
+      dates: 'Mar 9',
+      desc: 'All ops on JSM — one week buffer before contract ends',
+      milestones: [
+        { text: 'Transition all operations fully to JSM by Mar 9 — gives team a week of access before contract ends', done: false },
+      ]
+    },
+    {
+      title: 'Buffer & Contract Wind-Down',
+      dates: 'Mar 9 – Mar 17',
+      desc: 'Final cleanup, cancel Zendesk',
+      milestones: [
+        { text: 'Resolve any remaining open Zendesk tickets', done: false },
+        { text: 'Address issues and feedback from first weeks on JSM', done: false },
+        { text: 'Zendesk contract expires Mar 17 — confirm cancellation is processed', done: false },
+      ]
+    },
+  ]
+};
+
+// =========================================================
+//  RENDER: DETAIL VIEW
+// =========================================================
+function renderDetailView() {
+  const container = document.getElementById('v-timeline');
+  // Keep the line
+  container.innerHTML = '<div class="v-timeline-line"></div>';
+
+  data.phases.forEach((phase, pi) => {
+    const color = COLORS[pi % COLORS.length];
+    const isHere = pi === data.youAreHere;
+
+    const phaseEl = document.createElement('div');
+    phaseEl.className = 'phase' + (isHere ? ' you-are-here' : '');
+    phaseEl.style.animationDelay = `${0.1 + pi * 0.08}s`;
+
+    phaseEl.innerHTML = `
+      <div class="phase-header">
+        <div class="phase-bubble" style="background:${COLOR_MAP[color]};box-shadow:0 0 20px ${GLOW_MAP[color]};">
+          P${pi + 1}
+          ${isHere ? `<div class="here-indicator"><div class="here-arrow"></div><span class="here-tag" title="Click any phase bubble to move this marker">YOU ARE HERE</span></div>` : ''}
+        </div>
+        <div class="phase-title-group">
+          <div class="phase-dates" onclick="editField(${pi},'dates',this)">${phase.dates}</div>
+          <div class="phase-title" onclick="editField(${pi},'title',this)">${phase.title}</div>
+        </div>
+        <button class="phase-delete" onclick="deletePhase(${pi})" title="Delete phase">✕</button>
+      </div>
+      <div class="phase-card" data-phase="${pi}">
+        ${phase.milestones.map((m, mi) => milestoneHTML(pi, mi, m)).join('')}
+        <button class="add-milestone-btn" onclick="addMilestone(${pi})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add task
+        </button>
+      </div>
+    `;
+
+    // Click bubble to set "you are here"
+    phaseEl.querySelector('.phase-bubble').addEventListener('click', (e) => {
+      if (e.target.closest('.here-tag') || e.target.closest('.here-indicator')) return;
+      data.youAreHere = pi;
+      renderAll();
+    });
+
+    container.appendChild(phaseEl);
+  });
+
+  // Add phase button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-phase-btn';
+  addBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add phase
+  `;
+  addBtn.onclick = addPhase;
+  container.appendChild(addBtn);
+
+  updateProgress();
+  initDragDrop();
+}
+
+function milestoneHTML(pi, mi, m) {
+  return `
+    <div class="milestone" draggable="true" data-phase="${pi}" data-milestone="${mi}">
+      <div class="milestone-drag"><span></span><span></span><span></span></div>
+      <div class="milestone-check ${m.done ? 'done' : ''}" onclick="toggleDone(${pi},${mi})"></div>
+      <div class="milestone-text ${m.done ? 'done-text' : ''}" onclick="editMilestone(${pi},${mi},this)">${m.text}</div>
+      <button class="milestone-delete" onclick="deleteMilestone(${pi},${mi})">✕</button>
+    </div>
+  `;
+}
+
+// =========================================================
+//  RENDER: TIMELINE VIEW
+// =========================================================
+function renderTimelineView() {
+  const container = document.getElementById('h-timeline-nodes');
+  container.innerHTML = '';
+
+  data.phases.forEach((phase, pi) => {
+    const isAbove = pi % 2 === 0;
+    const isHere = pi === data.youAreHere;
+
+    const node = document.createElement('div');
+    node.className = `h-node ${isAbove ? 'above' : 'below'}`;
+
+    const doneCount = phase.milestones.filter(m => m.done).length;
+    const totalCount = phase.milestones.length;
+    const status = doneCount === totalCount && totalCount > 0 ? ' ✓' : ` ${doneCount}/${totalCount}`;
+
+    node.innerHTML = `
+      <div class="h-label-card">
+        <div class="h-label-date">${phase.dates}</div>
+        <div class="h-label-title">${phase.title}</div>
+        <div class="h-label-desc">${phase.desc || ''}</div>
+      </div>
+      <div class="h-connector"></div>
+      <div class="h-bubble">
+        ${isHere ? '<div class="h-here-ring"></div><div class="h-here-label">You are here</div>' : ''}
+        <span class="h-bubble-inner">P${pi + 1}</span>
+      </div>
+    `;
+
+    container.appendChild(node);
+  });
+}
+
+// =========================================================
+//  INTERACTIONS
+// =========================================================
+function toggleDone(pi, mi) {
+  data.phases[pi].milestones[mi].done = !data.phases[pi].milestones[mi].done;
+  renderAll();
+}
+
+function editField(pi, field, el) {
+  const current = data.phases[pi][field];
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = current;
+  input.className = 'editable-input';
+  el.innerHTML = '';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = () => {
+    const val = input.value.trim();
+    if (val) data.phases[pi][field] = val;
+    renderAll();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { input.value = current; input.blur(); }
+  });
+}
+
+function editMilestone(pi, mi, el) {
+  const current = data.phases[pi].milestones[mi].text;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = current;
+  input.className = 'editable-input';
+  el.innerHTML = '';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = () => {
+    const val = input.value.trim();
+    if (val) data.phases[pi].milestones[mi].text = val;
+    renderAll();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { input.value = current; input.blur(); }
+  });
+}
+
+function addMilestone(pi) {
+  data.phases[pi].milestones.push({ text: 'New task — click to edit', done: false });
+  renderAll();
+}
+
+function deleteMilestone(pi, mi) {
+  data.phases[pi].milestones.splice(mi, 1);
+  renderAll();
+}
+
+function addPhase() {
+  data.phases.push({
+    title: 'New Phase',
+    dates: 'TBD',
+    desc: 'Click to edit',
+    milestones: [{ text: 'New task — click to edit', done: false }]
+  });
+  renderAll();
+}
+
+function deletePhase(pi) {
+  if (data.phases.length <= 1) return;
+  data.phases.splice(pi, 1);
+  if (data.youAreHere >= data.phases.length) data.youAreHere = data.phases.length - 1;
+  renderAll();
+}
+
+function updateProgress() {
+  const total = data.phases.reduce((s, p) => s + p.milestones.length, 0);
+  const done = data.phases.reduce((s, p) => s + p.milestones.filter(m => m.done).length, 0);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progress-text').textContent = `${done} of ${total} complete`;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+// =========================================================
+//  DRAG & DROP
+// =========================================================
+let dragData = null;
+
+function initDragDrop() {
+  document.querySelectorAll('.milestone[draggable]').forEach(el => {
+    el.addEventListener('dragstart', (e) => {
+      dragData = {
+        fromPhase: parseInt(el.dataset.phase),
+        fromIndex: parseInt(el.dataset.milestone),
+      };
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('.phase-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+      dragData = null;
+    });
+  });
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      card.classList.add('drag-over');
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (!dragData) return;
+
+      const toPhase = parseInt(card.dataset.phase);
+      const milestone = data.phases[dragData.fromPhase].milestones.splice(dragData.fromIndex, 1)[0];
+
+      // Determine drop position by mouse Y
+      const milestones = card.querySelectorAll('.milestone');
+      let insertIndex = data.phases[toPhase].milestones.length;
+      for (let i = 0; i < milestones.length; i++) {
+        const rect = milestones[i].getBoundingClientRect();
+        if (e.clientY < rect.top + rect.height / 2) {
+          insertIndex = parseInt(milestones[i].dataset.milestone);
+          // Adjust if same phase and dragging down
+          if (toPhase === dragData.fromPhase && dragData.fromIndex < insertIndex) {
+            insertIndex--;
+          }
+          break;
+        }
+      }
+
+      data.phases[toPhase].milestones.splice(insertIndex, 0, milestone);
+      dragData = null;
+      renderAll();
+    });
+  });
+}
+
+// =========================================================
+//  VIEW / THEME SWITCHING
+// =========================================================
+function switchView(view) {
+  document.documentElement.setAttribute('data-view', view);
+  document.getElementById('btn-detail').classList.toggle('active', view === 'detail');
+  document.getElementById('btn-timeline').classList.toggle('active', view === 'timeline');
+  const target = document.getElementById(view === 'detail' ? 'detail-view' : 'timeline-view');
+  target.classList.remove('view-fade-enter');
+  void target.offsetWidth;
+  target.classList.add('view-fade-enter');
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  document.getElementById('icon-sun').style.display = next === 'dark' ? 'none' : 'block';
+  document.getElementById('icon-moon').style.display = next === 'dark' ? 'block' : 'none';
+  document.getElementById('theme-label').textContent = next === 'dark' ? 'Light' : 'Dark';
+}
+
+function renderAll() {
+  renderDetailView();
+  renderTimelineView();
+}
+
+// =========================================================
+//  INIT
+// =========================================================
+renderAll();
+</script>
+
+</body>
+</html>
