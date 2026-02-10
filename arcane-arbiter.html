@@ -262,7 +262,6 @@ async function checkCombos(cards){
   const seen = new Set();
   let apiSucceeded = false;
 
-  // Build all queries: full set + all 2-card pairs (for 3+ cards)
   const queries = [];
   queries.push(cards.map(c=>`card="${c.name}"`).join(' '));
   if(cards.length > 2){
@@ -270,26 +269,38 @@ async function checkCombos(cards){
       queries.push(`card="${cards[a].name}" card="${cards[b].name}"`);
   }
 
+  // Multiple CORS proxy options for reliability on GitHub Pages
+  function proxyURLs(base) {
+    return [
+      `https://corsproxy.io/?url=${encodeURIComponent(base)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`,
+      `https://corsproxy.org/?url=${encodeURIComponent(base)}`,
+      base, // try direct last (works if CORS headers present)
+    ];
+  }
+
   for(const q of queries){
     const base=`${SB}/variants/?q=${encodeURIComponent(q)}&limit=8&ordering=popularity`;
-    for(const url of [base,`https://corsproxy.io/?url=${encodeURIComponent(base)}`,`https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`]){
+    for(const url of proxyURLs(base)){
       try{
         const ac=new AbortController();const t=setTimeout(()=>ac.abort(),5000);
         const r=await fetch(url,{headers:{'Accept':'application/json'},signal:ac.signal});
-        clearTimeout(t);if(!r.ok)continue;const d=await r.json();
+        clearTimeout(t);if(!r.ok)continue;
+        const text = await r.text();
+        let d;
+        try { d = JSON.parse(text); } catch(e) { continue; } // skip non-JSON responses
         const results=d.results||d.data||[];
         for(const combo of results){
           const id=combo.id||JSON.stringify(combo.uses||combo.cards||'').slice(0,80);
           if(!seen.has(id)){seen.add(id);allResults.push(combo);}
         }
         apiSucceeded = true;
-        break; // got results from this proxy, move to next query
+        break;
       }catch(e){continue;}
     }
   }
 
   if(allResults.length>0) return allResults.slice(0,8);
-  // Return null only if no API call succeeded at all
   return apiSucceeded ? [] : null;
 }
 
@@ -327,7 +338,7 @@ function renderCombos(combos,cards){
       </div>`;
     }).join('');
   } else if(fail){
-    ct=`<div class="no-rulings">Could not reach Commander Spellbook. <a href="${url}" target="_blank" style="color:var(--gold);text-decoration:underline;">Search directly ↗</a></div>`;
+    ct=`<div class="no-rulings">Could not reach Commander Spellbook — CORS proxies may be temporarily down. <a href="${url}" target="_blank" style="color:var(--gold);text-decoration:underline;">Search Commander Spellbook directly ↗</a></div>`;
   } else {
     ct=`<div class="no-rulings">No documented combos found. <a href="${url}" target="_blank" style="color:var(--gold);text-decoration:underline;">Check Commander Spellbook ↗</a></div>`;
   }
