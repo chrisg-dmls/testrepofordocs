@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2025 — The Year in Review</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --surface: #131318;
+    --line: #1e1e28;
+    --text: #e8e6e1;
+    --text-dim: #8a8893;
+    --accent: #c9442a;
+    --accent-glow: #e05539;
+    --gold: #c4a35a;
+    --blue: #4a7fb5;
+    --teal: #3a9e8f;
+    --purple: #8b6cc1;
+    --rose: #c75b7a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    padding: 2rem;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 40%, rgba(201,68,42,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 30% 70%, rgba(74,127,181,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .hero-year {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(6rem, 18vw, 14rem);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    background: linear-gradient(180deg, var(--text) 40%, var(--text-dim) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    animation: fadeUp 1s ease-out 0.2s forwards;
+  }
+
+  .hero-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: clamp(0.7rem, 1.2vw, 0.9rem);
+    text-transform: uppercase;
+    letter-spacing: 0.35em;
+    color: var(--text-dim);
+    margin-top: 1rem;
+    opacity: 0;
+    animation: fadeUp 1s ease-out 0.5s forwards;
+  }
+
+  .hero-line {
+    width: 1px;
+    height: 80px;
+    background: linear-gradient(180deg, var(--accent) 0%, transparent 100%);
+    margin-top: 3rem;
+    opacity: 0;
+    animation: fadeUp 1s ease-out 0.8s forwards;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: var(--text-dim);
+    opacity: 0;
+    animation: fadeUp 1s ease-out 1.2s forwards, pulse 3s ease-in-out 2s infinite;
+  }
+
+  /* ---- TIMELINE ---- */
+  .timeline-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem 6rem;
+    position: relative;
+  }
+
+  .timeline-spine {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, var(--accent) 0%, var(--line) 5%, var(--line) 95%, transparent 100%);
+    transform: translateX(-50%);
+  }
+
+  .month-group {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .month-marker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0 1.5rem;
+    z-index: 2;
+  }
+
+  .month-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    background: var(--bg);
+    padding: 0.4rem 1.2rem;
+    border: 1px solid rgba(201,68,42,0.3);
+    border-radius: 2px;
+  }
+
+  /* ---- EVENT CARDS ---- */
+  .event {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    position: relative;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .event.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .event.left { flex-direction: row-reverse; }
+
+  .event-content {
+    width: calc(50% - 40px);
+    padding: 1.4rem 1.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    position: relative;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .event-content:hover {
+    border-color: rgba(201,68,42,0.3);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+  }
+
+  .event-dot {
+    position: absolute;
+    left: 50%;
+    top: 22px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    border: 2px solid var(--bg);
+  }
+
+  .event-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .event-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    line-height: 1.35;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+
+  .event-desc {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.65;
+  }
+
+  .event-tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+    margin-top: 0.75rem;
+    border: 1px solid;
+  }
+
+  /* Tag colors */
+  .tag-conflict { color: var(--accent); border-color: rgba(201,68,42,0.35); background: rgba(201,68,42,0.08); }
+  .tag-politics { color: var(--blue); border-color: rgba(74,127,181,0.35); background: rgba(74,127,181,0.08); }
+  .tag-disaster { color: var(--gold); border-color: rgba(196,163,90,0.35); background: rgba(196,163,90,0.08); }
+  .tag-science { color: var(--teal); border-color: rgba(58,158,143,0.35); background: rgba(58,158,143,0.08); }
+  .tag-culture { color: var(--purple); border-color: rgba(139,108,193,0.35); background: rgba(139,108,193,0.08); }
+  .tag-terror { color: var(--rose); border-color: rgba(199,91,122,0.35); background: rgba(199,91,122,0.08); }
+
+  /* Dot colors match tags */
+  .dot-conflict { background: var(--accent); box-shadow: 0 0 8px rgba(201,68,42,0.4); }
+  .dot-politics { background: var(--blue); box-shadow: 0 0 8px rgba(74,127,181,0.4); }
+  .dot-disaster { background: var(--gold); box-shadow: 0 0 8px rgba(196,163,90,0.4); }
+  .dot-science { background: var(--teal); box-shadow: 0 0 8px rgba(58,158,143,0.4); }
+  .dot-culture { background: var(--purple); box-shadow: 0 0 8px rgba(139,108,193,0.4); }
+  .dot-terror { background: var(--rose); box-shadow: 0 0 8px rgba(199,91,122,0.4); }
+
+  /* ---- LEGEND ---- */
+  .legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+  }
+
+  .legend-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  /* ---- FOOTER ---- */
+  .footer {
+    text-align: center;
+    padding: 4rem 2rem;
+    border-top: 1px solid var(--line);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .footer p {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* ---- ANIMATIONS ---- */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 768px) {
+    .timeline-spine { left: 20px; }
+
+    .month-marker { justify-content: flex-start; padding-left: 0; }
+
+    .month-label { margin-left: 40px; }
+
+    .event, .event.left { flex-direction: row; }
+
+    .event-content { width: calc(100% - 55px); margin-left: 55px; }
+
+    .event-dot { left: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-year">2025</div>
+  <div class="hero-sub">The Year That Reshaped The World</div>
+  <div class="hero-line"></div>
+  <div class="scroll-hint">Scroll to explore ↓</div>
+</section>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Conflict</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Politics</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Disaster</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>Science &amp; Tech</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>Culture</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div>Terror</div>
+</div>
+
+<!-- TIMELINE -->
+<div class="timeline-container">
+  <div class="timeline-spine"></div>
+
+  <!-- ====== JANUARY ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">January</span></div>
+
+    <div class="event right">
+      <div class="event-dot dot-disaster"></div>
+      <div class="event-content">
+        <div class="event-date">Jan 7 – 31</div>
+        <div class="event-title">Los Angeles Palisades Wildfire</div>
+        <div class="event-desc">Hurricane-force Santa Ana winds ignited devastating wildfires across LA County, destroying thousands of homes and forcing tens of thousands to evacuate. Insured losses were among the costliest in U.S. history.</div>
+        <span class="event-tag tag-disaster">Disaster</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-conflict"></div>
+      <div class="event-content">
+        <div class="event-date">Jan 19</div>
+        <div class="event-title">Gaza Ceasefire Takes Effect</div>
+        <div class="event-desc">After months of negotiations brokered by the U.S. and Qatar, Israel and Hamas agreed to a ceasefire, pausing a war that had killed tens of thousands since October 2023. The truce included hostage and prisoner exchanges.</div>
+        <span class="event-tag tag-conflict">Conflict</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Jan 20</div>
+        <div class="event-title">Trump Inaugurated as 47th President</div>
+        <div class="event-desc">Donald Trump was sworn in for a second non-consecutive term. He immediately began signing a historic wave of executive orders — 225 by year's end — targeting immigration, energy, and government operations.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-science"></div>
+      <div class="event-content">
+        <div class="event-date">Jan 27</div>
+        <div class="event-title">DeepSeek Shakes Global Markets</div>
+        <div class="event-desc">China's DeepSeek released an AI chatbot rivaling ChatGPT, triggering a global tech selloff. Nvidia lost nearly $600 billion in a single day — the largest single-company market cap drop in U.S. stock history.</div>
+        <span class="event-tag tag-science">Science & Tech</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-disaster"></div>
+      <div class="event-content">
+        <div class="event-date">Jan 29</div>
+        <div class="event-title">Potomac River Mid-Air Collision</div>
+        <div class="event-desc">A U.S. Army Black Hawk helicopter collided with a PSA Airlines regional jet on approach to Reagan National Airport in Washington, D.C. All 67 people aboard both aircraft were killed in the deadliest U.S. air disaster in decades.</div>
+        <span class="event-tag tag-disaster">Disaster</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== FEBRUARY ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">February</span></div>
+
+    <div class="event left">
+      <div class="event-dot dot-science"></div>
+      <div class="event-content">
+        <div class="event-date">Feb</div>
+        <div class="event-title">Tomb of Thutmose II Discovered</div>
+        <div class="event-desc">Egypt announced the discovery of the tomb of Pharaoh Thutmose II by a joint British-Egyptian team — the first royal tomb found since Tutankhamun's in 1922, and the last of the Eighteenth Dynasty pharaohs to be located.</div>
+        <span class="event-tag tag-science">Science</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Feb 17</div>
+        <div class="event-title">Indonesia Nationwide Protests</div>
+        <div class="event-desc">Mass protests erupted across Indonesia after legislation was enacted to increase military involvement in civilian government. The demonstrations became some of the largest in the country's recent history.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MARCH ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">March</span></div>
+
+    <div class="event left">
+      <div class="event-dot dot-conflict"></div>
+      <div class="event-content">
+        <div class="event-date">Mar 18</div>
+        <div class="event-title">Israel Breaks Gaza Ceasefire</div>
+        <div class="event-desc">Israel launched a surprise military operation in Gaza, shattering the January ceasefire. The renewed offensive drew international condemnation and plunged the region back into full-scale conflict.</div>
+        <span class="event-tag tag-conflict">Conflict</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-conflict"></div>
+      <div class="event-content">
+        <div class="event-date">Mar</div>
+        <div class="event-title">Russia Reclaims Kursk Province</div>
+        <div class="event-desc">Russian forces recaptured the Kursk region, which Ukraine had seized in a surprise invasion in August 2024. The Ukraine war ground into its fourth year with Russia losing an estimated 1,000 soldiers per day.</div>
+        <span class="event-tag tag-conflict">Conflict</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== APRIL ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">April</span></div>
+
+    <div class="event left">
+      <div class="event-dot dot-culture"></div>
+      <div class="event-content">
+        <div class="event-date">Apr 21</div>
+        <div class="event-title">Pope Francis Dies</div>
+        <div class="event-desc">Pope Francis died suddenly after suffering a stroke, ending a papacy of twelve years. The Argentine-born pontiff was known for his progressive social stance, humility, and outreach beyond the Catholic faithful. The Church entered interregnum.</div>
+        <span class="event-tag tag-culture">Culture</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== MAY ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">May</span></div>
+
+    <div class="event right">
+      <div class="event-dot dot-culture"></div>
+      <div class="event-content">
+        <div class="event-date">May</div>
+        <div class="event-title">First American Pope Elected</div>
+        <div class="event-desc">Cardinal Robert Prevost of Chicago was elected as Pope Leo XIV — the first American to lead the Catholic Church in its 2,000-year history. Born on Chicago's South Side and a Villanova graduate, he had spent decades doing missionary work in Peru.</div>
+        <span class="event-tag tag-culture">Culture</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== JUNE ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">June</span></div>
+
+    <div class="event left">
+      <div class="event-dot dot-conflict"></div>
+      <div class="event-content">
+        <div class="event-date">Jun 12 – 24</div>
+        <div class="event-title">The Twelve-Day War: Israel vs. Iran</div>
+        <div class="event-desc">Years of tensions erupted into open conflict. Israel struck Iran's military commanders, nuclear scientists, and strategic targets, joined by U.S. bombers. A ceasefire brokered by the U.S. and Qatar ended the fighting on June 24.</div>
+        <span class="event-tag tag-conflict">Conflict</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-conflict"></div>
+      <div class="event-content">
+        <div class="event-date">Jun</div>
+        <div class="event-title">Ukraine's Operation Spiderweb</div>
+        <div class="event-desc">Ukraine stunned the world with a covert drone strike deep into Russia, hitting five air bases simultaneously. While it showcased Ukraine's growing capabilities, experts noted it did not shift the war's fundamental dynamics.</div>
+        <span class="event-tag tag-conflict">Conflict</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-terror"></div>
+      <div class="event-content">
+        <div class="event-date">Jun 14</div>
+        <div class="event-title">Minnesota Lawmaker Assassinated</div>
+        <div class="event-desc">Minnesota State Rep. Melissa Hortman and her husband were shot and killed at their home in a politically motivated attack. State Sen. John Hoffman and his wife were also shot in a separate incident the same day.</div>
+        <span class="event-tag tag-terror">Terror</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== JULY ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">July</span></div>
+
+    <div class="event right">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Jul</div>
+        <div class="event-title">"One Big Beautiful Bill" Signed</div>
+        <div class="event-desc">President Trump signed sweeping legislation authorizing troops at the southern border, cutting federal spending across major programs including SNAP, and establishing the "Golden Dome" aerial defense system.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SEPTEMBER ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">September</span></div>
+
+    <div class="event left">
+      <div class="event-dot dot-terror"></div>
+      <div class="event-content">
+        <div class="event-date">Sep 7</div>
+        <div class="event-title">Carlo Acutis Canonized</div>
+        <div class="event-desc">The teenage web developer Carlo Acutis, who died of leukemia at 15, was canonized by Pope Leo XIV — becoming known as "the first millennial saint" and "patron saint of the Internet" for his digital evangelism.</div>
+        <span class="event-tag tag-culture">Culture</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-terror"></div>
+      <div class="event-content">
+        <div class="event-date">Sep 10</div>
+        <div class="event-title">Charlie Kirk Assassinated</div>
+        <div class="event-desc">Conservative activist and Turning Point USA founder Charlie Kirk was shot and killed during a campus event at Utah Valley University in Utah. The assassination sent shockwaves through U.S. politics and intensified debates over political violence.</div>
+        <span class="event-tag tag-terror">Terror</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Sep 8</div>
+        <div class="event-title">Nepal Gen Z Uprising</div>
+        <div class="event-desc">Thousands of students stormed government buildings in Kathmandu, protesting a sweeping social media ban. The uprising grew into one of the most dramatic Gen Z-led protests of the year, forcing the government into crisis.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== OCTOBER ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">October</span></div>
+
+    <div class="event right">
+      <div class="event-dot dot-conflict"></div>
+      <div class="event-content">
+        <div class="event-date">Oct 10 – 13</div>
+        <div class="event-title">Gaza Ceasefire & Hostages Released</div>
+        <div class="event-desc">A second ceasefire took effect in the Israel-Hamas war. Over the following days, the last 20 living Israeli hostages were returned. The conflict had lasted roughly two years since Hamas's October 2023 assault.</div>
+        <span class="event-tag tag-conflict">Conflict</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-disaster"></div>
+      <div class="event-content">
+        <div class="event-date">Oct</div>
+        <div class="event-title">Hurricane Melissa Hits Jamaica</div>
+        <div class="event-desc">Hurricane Melissa became the strongest storm to ever strike Jamaica, making landfall as a Category 5 and causing widespread devastation. It capped a year of catastrophic climate events with over $105B in global insured losses.</div>
+        <span class="event-tag tag-disaster">Disaster</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== NOVEMBER ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">November</span></div>
+
+    <div class="event right">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Nov</div>
+        <div class="event-title">U.S. Government Shutdown Begins</div>
+        <div class="event-desc">Political gridlock led to the longest government shutdown in years, beginning just before Thanksgiving. The crisis stemmed from deep disagreements over healthcare, defense spending, and the fallout of Trump's sweeping domestic agenda.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Nov 5</div>
+        <div class="event-title">Democrats Sweep 2025 Elections</div>
+        <div class="event-desc">In off-year elections seen as an early referendum on the Trump presidency, Democrats swept nearly every competitive race across the country, reportedly rattling Republican strategists heading into 2026 midterms.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== DECEMBER ====== -->
+  <div class="month-group">
+    <div class="month-marker"><span class="month-label">December</span></div>
+
+    <div class="event right">
+      <div class="event-dot dot-culture"></div>
+      <div class="event-content">
+        <div class="event-date">Dec 6</div>
+        <div class="event-title">Messi Wins MLS Cup with Inter Miami</div>
+        <div class="event-desc">Lionel Messi led Inter Miami CF to its first-ever MLS Cup championship, capping a fairy-tale chapter in the Argentine legend's career and electrifying American soccer audiences.</div>
+        <span class="event-tag tag-culture">Culture</span>
+      </div>
+    </div>
+
+    <div class="event left">
+      <div class="event-dot dot-politics"></div>
+      <div class="event-content">
+        <div class="event-date">Dec 10</div>
+        <div class="event-title">Australia Bans Social Media for Under-16s</div>
+        <div class="event-desc">Australia implemented the world's strictest social media laws, banning access for anyone under 16 across platforms including YouTube, Instagram, TikTok, and X. The move inspired similar legislation globally.</div>
+        <span class="event-tag tag-politics">Politics</span>
+      </div>
+    </div>
+
+    <div class="event right">
+      <div class="event-dot dot-terror"></div>
+      <div class="event-content">
+        <div class="event-date">Dec 14</div>
+        <div class="event-title">Bondi Beach Shooting</div>
+        <div class="event-desc">Two gunmen opened fire on a Hanukkah celebration at Bondi Beach in Sydney, killing 15 people and injuring over 40 in what became the deadliest terrorist attack in Australian history. One gunman was killed by police.</div>
+        <span class="event-tag tag-terror">Terror</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>2025 — A year that reshaped borders, beliefs, and the balance of power</p>
+</div>
+
+<script>
+  // Intersection Observer for scroll-triggered fade-in
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
+          entry.target.classList.add('visible');
+        }, i * 80);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.15,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  document.querySelectorAll('.event').forEach(el => observer.observe(el));
+
+  // Smooth parallax on hero
+  window.addEventListener('scroll', () => {
+    const hero = document.querySelector('.hero-year');
+    const scroll = window.scrollY;
+    if (scroll < window.innerHeight) {
+      hero.style.transform = `translateY(${scroll * 0.15}px)`;
+      hero.style.opacity = 1 - (scroll / (window.innerHeight * 0.8));
+    }
+  });
+</script>
+
+</body>
+</html>
