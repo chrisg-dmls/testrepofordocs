@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcane Arbiter — MTG Interaction Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,500&family=Alegreya+Sans:wght@300;400;500;700&family=Alegreya+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+[data-theme="dark"] {
+  --bg-deep: #08080e; --bg-card: #0f0f1a; --bg-surface: #161625; --bg-hover: #1e1e35; --bg-panel: #111120;
+  --gold: #c9a84c; --gold-dim: #8a7235; --gold-bright: #e8cc6a;
+  --text-primary: #e8e4dc; --text-secondary: #9a9688; --text-muted: #5e5c55;
+  --border: #222238; --red: #d4654a; --green: #5ea55e; --blue: #5b8fc9; --purple: #9b7cc9;
+  --shadow: rgba(0,0,0,0.5);
+}
+[data-theme="light"] {
+  --bg-deep: #f4f1eb; --bg-card: #fff; --bg-surface: #ece8e0; --bg-hover: #e0dbd0; --bg-panel: #fff;
+  --gold: #8b6914; --gold-dim: #a07c2a; --gold-bright: #6b4f0a;
+  --text-primary: #1a1a1a; --text-secondary: #555248; --text-muted: #8a867c;
+  --border: #d5d0c5; --red: #c0472e; --green: #3a7d3a; --blue: #3670a8; --purple: #7555a8;
+  --shadow: rgba(0,0,0,0.08);
+}
+html { font-size: 16px; }
+body { font-family: 'Alegreya Sans', sans-serif; background: var(--bg-deep); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+[data-theme="dark"] body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 70% 40% at 20% -10%, rgba(201,168,76,0.03), transparent), radial-gradient(ellipse 70% 40% at 80% -10%, rgba(201,168,76,0.03), transparent); pointer-events: none; z-index: 0; }
+.app { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+
+/* Header */
+header { text-align: center; padding: 1.5rem 0 1rem; position: relative; }
+header h1 { font-family: 'Cinzel', serif; font-weight: 900; font-size: 1.8rem; letter-spacing: 0.18em; color: var(--gold); text-transform: uppercase; }
+header h1::after { content: ''; display: block; width: 50%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); margin: 0.5rem auto 0; }
+header .subtitle { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--text-muted); font-size: 1rem; margin-top: 0.4rem; }
+
+/* Theme Toggle */
+.theme-toggle { position: absolute; top: 1.5rem; right: 0; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 0.25rem; display: flex; cursor: pointer; transition: all 0.3s; }
+.theme-toggle button { background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 14px; font-size: 0.85rem; color: var(--text-muted); transition: all 0.25s; line-height: 1; }
+.theme-toggle button.active { background: var(--gold); color: #111; }
+
+/* Mode Tabs */
+.mode-tabs { display: flex; justify-content: center; gap: 0.35rem; margin: 1.2rem 0 1.5rem; }
+.mode-tab { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.78rem; letter-spacing: 0.1em; padding: 0.5rem 1.3rem; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.25s; }
+.mode-tab:hover { border-color: var(--gold-dim); color: var(--text-secondary); }
+.mode-tab.active { background: var(--gold); color: #111; border-color: var(--gold); font-weight: 700; }
+
+/* Search Area */
+.search-area { display: flex; align-items: start; gap: 0; margin-bottom: 1.5rem; justify-content: center; flex-wrap: wrap; }
+.search-slot { position: relative; flex: 1; min-width: 160px; max-width: 260px; }
+.slot-label { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.65rem; letter-spacing: 0.16em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.35rem; text-align: center; }
+.slot-input-wrap { position: relative; }
+.slot-input-wrap svg.search-icon { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; transition: color 0.3s; }
+.slot-input-wrap input { width: 100%; padding: 0.6rem 2rem 0.6rem 2.1rem; font-family: 'Alegreya Sans', sans-serif; font-size: 0.85rem; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; outline: none; transition: border-color 0.3s, box-shadow 0.3s, background 0.3s; }
+.slot-input-wrap input::placeholder { color: var(--text-muted); font-style: italic; font-size: 0.8rem; }
+.slot-input-wrap input:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 3px rgba(201,168,76,0.08); }
+.slot-input-wrap input:focus ~ svg.search-icon { color: var(--gold); }
+.slot-clear { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; display: none; }
+.slot-clear:hover { color: var(--text-primary); }
+.slot-clear.visible { display: block; }
+.slot-divider { display: flex; align-items: center; justify-content: center; padding: 1.2rem 0.35rem 0; }
+.slot-divider span { font-family: 'Cinzel', serif; font-size: 0.7rem; color: var(--gold-dim); width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 50%; background: var(--bg-card); }
+
+/* Autocomplete */
+.ac-dropdown { position: absolute; top: calc(100% + 3px); left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; max-height: 220px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 10px 30px var(--shadow); }
+.ac-dropdown.open { display: block; }
+.ac-item { padding: 0.45rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: var(--text-secondary); transition: background 0.12s, color 0.12s; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.active { background: var(--bg-hover); color: var(--gold-bright); }
+.ac-item mark { background: none; color: var(--text-primary); font-weight: 700; }
+
+/* Selected */
+.slot-selected { display: none; align-items: center; gap: 0.4rem; margin-top: 0.3rem; padding: 0.2rem 0.45rem; background: rgba(94,165,94,0.08); border: 1px solid rgba(94,165,94,0.15); border-radius: 4px; }
+.slot-selected.active { display: flex; }
+.slot-selected .ss-name { font-size: 0.7rem; color: var(--green); font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-selected .ss-change { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.55rem; color: var(--text-muted); cursor: pointer; background: none; border: none; letter-spacing: 0.06em; }
+.slot-selected .ss-change:hover { color: var(--text-primary); }
+.slot-error { text-align: center; font-size: 0.7rem; color: var(--red); margin-top: 0.2rem; display: none; }
+.slot-error.active { display: block; }
+
+/* Analyze Button */
+.analyze-wrap { text-align: center; margin-bottom: 1.8rem; display: none; }
+.analyze-wrap.active { display: block; }
+.analyze-btn { font-family: 'Cinzel', serif; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: #111; background: linear-gradient(135deg, var(--gold), var(--gold-bright)); border: none; padding: 0.65rem 1.8rem; border-radius: 6px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s; box-shadow: 0 4px 18px rgba(201,168,76,0.2); }
+.analyze-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(201,168,76,0.3); }
+.analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Card Panels */
+.cards-display { display: none; gap: 0.8rem; margin-bottom: 1.5rem; }
+.cards-display.active { display: grid; }
+.cards-display.cards-2 { grid-template-columns: 1fr 1fr; }
+.cards-display.cards-3 { grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
+.cards-display.cards-4 { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.5rem; }
+@media (max-width: 900px) { .cards-display.cards-4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 800px) { .cards-display.cards-3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .cards-display.cards-2, .cards-display.cards-3, .cards-display.cards-4 { grid-template-columns: 1fr; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.card-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem; animation: fadeUp 0.4s ease; transition: background 0.3s, border-color 0.3s; display: flex; gap: 0.7rem; align-items: start; }
+.card-panel .card-thumb { width: 160px; min-width: 160px; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 12px var(--shadow); flex-shrink: 0; }
+.cards-display.cards-3 .card-panel .card-thumb { width: 130px; min-width: 130px; }
+.cards-display.cards-4 .card-panel .card-thumb { width: 110px; min-width: 110px; }
+.card-panel .card-thumb img { display: block; width: 100%; height: auto; }
+.cm-name { font-family: 'Cinzel', serif; font-size: 0.82rem; font-weight: 600; color: var(--text-primary); line-height: 1.25; margin-bottom: 0.1rem; }
+.cm-type { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.6rem; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.3rem; }
+.cm-oracle { font-size: 0.73rem; line-height: 1.45; color: var(--text-secondary); max-height: 120px; overflow-y: auto; white-space: pre-wrap; }
+.cards-display.cards-3 .cm-name, .cards-display.cards-4 .cm-name { font-size: 0.74rem; }
+.cards-display.cards-3 .cm-oracle, .cards-display.cards-4 .cm-oracle { font-size: 0.67rem; max-height: 90px; }
+.cm-oracle i { color: var(--text-muted); }
+.mana-cost { display: inline-flex; gap: 1px; vertical-align: middle; margin-left: 0.2rem; }
+.mana-symbol { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; font-size: 0.5rem; font-weight: 700; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.mana-W { background: linear-gradient(135deg, #f9f5e3, #e8deb5); } .mana-U { background: linear-gradient(135deg, #a8d0e6, #6aa1c9); }
+.mana-B { background: linear-gradient(135deg, #b8a9c6, #8a7a9a); } .mana-R { background: linear-gradient(135deg, #e8a889, #d4654a); }
+.mana-G { background: linear-gradient(135deg, #a8d5a0, #5ea55e); } .mana-C { background: linear-gradient(135deg, #ccc, #999); }
+.mana-generic { background: linear-gradient(135deg, #d4d0c8, #a8a49c); }
+
+/* Results */
+.results { display: none; animation: fadeUp 0.5s ease; } .results.active { display: block; }
+.result-section { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.4rem; margin-bottom: 1rem; transition: background 0.3s, border-color 0.3s; }
+.result-section-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.7rem; }
+.rs-icon { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+.rs-icon.combo { background: rgba(201,168,76,0.12); color: var(--gold); }
+.rs-icon.analysis { background: rgba(155,124,201,0.12); color: var(--purple); }
+.rs-icon.rulings { background: rgba(91,143,201,0.12); color: var(--blue); }
+.result-section-header h3 { font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 600; color: var(--text-primary); letter-spacing: 0.06em; }
+.rs-badge { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.55rem; letter-spacing: 0.08em; padding: 0.12rem 0.45rem; border-radius: 3px; margin-left: auto; }
+.badge-found { background: rgba(94,165,94,0.15); color: var(--green); } .badge-none { background: rgba(90,90,90,0.1); color: var(--text-muted); }
+.combo-result { background: var(--bg-surface); border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid var(--gold-dim); transition: background 0.3s; overflow: hidden; }
+.combo-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.8rem; cursor: pointer; user-select: none; }
+.combo-header:hover { background: var(--bg-hover); }
+.combo-toggle { font-size: 0.6rem; color: var(--gold-dim); transition: transform 0.25s; flex-shrink: 0; }
+.combo-result.open .combo-toggle { transform: rotate(90deg); }
+.combo-header .combo-name { font-weight: 700; font-size: 0.82rem; color: var(--text-primary); flex: 1; }
+.combo-header .combo-link { font-size: 0.6rem; color: var(--gold-dim); text-decoration: none; flex-shrink: 0; opacity: 0.7; transition: opacity 0.2s; }
+.combo-header .combo-link:hover { opacity: 1; }
+.combo-body { display: none; padding: 0 0.8rem 0.6rem; }
+.combo-result.open .combo-body { display: block; }
+.combo-also { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.58rem; color: var(--text-muted); margin-bottom: 0.35rem; letter-spacing: 0.04em; }
+.combo-steps-list { list-style: none; counter-reset: combo-step; padding: 0; }
+.combo-steps-list li { counter-increment: combo-step; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; padding: 0.2rem 0 0.2rem 1.6rem; position: relative; }
+.combo-steps-list li::before { content: counter(combo-step); position: absolute; left: 0; top: 0.2rem; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border); font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.55rem; font-weight: 700; color: var(--gold-dim); display: flex; align-items: center; justify-content: center; }
+.analysis-text { font-family: 'Cormorant Garamond', serif; font-size: 1rem; line-height: 1.7; color: var(--text-primary); white-space: pre-wrap; }
+.analysis-text strong { color: var(--gold-bright); font-weight: 600; }
+[data-theme="light"] .analysis-text strong { color: var(--gold); }
+.analysis-text em { color: var(--text-secondary); }
+.analysis-loading { display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 0; }
+.analysis-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.analysis-loading span { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.1em; }
+.rulings-columns { display: grid; gap: 0.8rem; }
+.rulings-columns.cols-2 { grid-template-columns: 1fr 1fr; } .rulings-columns.cols-3 { grid-template-columns: 1fr 1fr 1fr; } .rulings-columns.cols-4 { grid-template-columns: 1fr 1fr; }
+@media (max-width: 760px) { .rulings-columns { grid-template-columns: 1fr !important; } }
+.rulings-col h4 { font-family: 'Cinzel', serif; font-size: 0.7rem; font-weight: 600; color: var(--gold-dim); margin-bottom: 0.35rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--border); }
+.ruling-item { padding: 0.35rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); font-size: 0.75rem; line-height: 1.45; }
+.ruling-item:last-child { border-bottom: none; }
+.ruling-date { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.55rem; color: var(--text-muted); }
+.ruling-text { color: var(--text-secondary); }
+.no-rulings { color: var(--text-muted); font-style: italic; font-size: 0.75rem; }
+.disclaimer { text-align: center; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.8rem; font-style: italic; display: none; }
+::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--bg-deep); } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+@media (max-width: 700px) { .search-area { flex-direction: column; align-items: center; } .search-slot { max-width: 100%; width: 100%; } .slot-divider { padding: 0.3rem 0; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Arcane Arbiter</h1>
+    <p class="subtitle">MTG Card Interaction &amp; Rules Analyzer</p>
+    <div class="theme-toggle" id="themeToggle">
+      <button data-mode="light" title="Light mode">☀</button>
+      <button data-mode="dark" title="Dark mode" class="active">☽</button>
+    </div>
+  </header>
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" data-count="2">2-Card</button>
+    <button class="mode-tab" data-count="3">3-Card</button>
+    <button class="mode-tab" data-count="4">4-Card</button>
+  </div>
+  <div class="search-area" id="searchArea"></div>
+  <div class="analyze-wrap" id="analyzeWrap"><button class="analyze-btn" id="analyzeBtn">⚔ Analyze Interaction</button></div>
+  <div class="cards-display" id="cardsDisplay"></div>
+  <div class="results" id="results"></div>
+  <div class="disclaimer" id="disclaimer">Analysis is for reference only — always defer to an official judge for tournament play.</div>
+</div>
+<script>
+const API='https://api.scryfall.com', SB='https://backend.commanderspellbook.com';
+const S={cardCount:2,cards:{},rulings:{},sug:{},ai:{},ac:{},dt:{}};
+const names=['One','Two','Three','Four'];
+
+function initSlot(s){S.cards[s]=null;S.rulings[s]=[];S.sug[s]=[];S.ai[s]=-1;S.ac[s]=null;S.dt[s]=null;}
+const gI=s=>document.querySelector(`.slot-search[data-slot="${s}"]`);
+const gC=s=>document.querySelector(`.slot-clear[data-slot="${s}"]`);
+const gD=s=>document.querySelector(`.ac-dropdown[data-slot="${s}"]`);
+const gE=s=>document.querySelector(`.slot-error[data-slot="${s}"]`);
+const gS=s=>document.querySelector(`.slot-selected[data-slot="${s}"]`);
+
+// Theme
+document.getElementById('themeToggle').addEventListener('click',e=>{const b=e.target.closest('button[data-mode]');if(!b)return;document.documentElement.setAttribute('data-theme',b.dataset.mode);document.querySelectorAll('#themeToggle button').forEach(x=>x.classList.toggle('active',x===b));try{localStorage.setItem('at',b.dataset.mode)}catch(e){}});
+try{const t=localStorage.getItem('at');if(t){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('#themeToggle button').forEach(b=>b.classList.toggle('active',b.dataset.mode===t));}}catch(e){}
+
+// Mode tabs
+document.getElementById('modeTabs').addEventListener('click',e=>{const t=e.target.closest('.mode-tab');if(!t)return;const c=parseInt(t.dataset.count);if(c===S.cardCount)return;S.cardCount=c;document.querySelectorAll('.mode-tab').forEach(x=>x.classList.toggle('active',x===t));buildSlots();resetResults();});
+
+function buildSlots(){
+  const a=document.getElementById('searchArea');a.innerHTML='';
+  for(let i=1;i<=S.cardCount;i++){
+    initSlot(i);
+    if(i>1){const d=document.createElement('div');d.className='slot-divider';d.innerHTML='<span>✦</span>';a.appendChild(d);}
+    const s=document.createElement('div');s.className='search-slot';s.id=`slot${i}`;
+    s.innerHTML=`<div class="slot-label">Card ${names[i-1]}</div><div class="slot-input-wrap"><svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="slot-search" data-slot="${i}" placeholder="Search card ${i}..." autocomplete="off" spellcheck="false"><button class="slot-clear" data-slot="${i}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="ac-dropdown" data-slot="${i}"></div><div class="slot-error" data-slot="${i}"></div><div class="slot-selected" data-slot="${i}"><span class="ss-name"></span><button class="ss-change">Change</button></div>`;
+    a.appendChild(s);bindSlot(i);
+  }
+  const fi=a.querySelector('.slot-search');if(fi)fi.focus();
+}
+
+function bindSlot(s){
+  const inp=gI(s),cl=gC(s);
+  inp.addEventListener('input',()=>{const q=inp.value.trim();cl.classList.toggle('visible',q.length>0);gE(s).classList.remove('active');if(q.length<2){closeAC(s);return;}clearTimeout(S.dt[s]);S.dt[s]=setTimeout(()=>fetchAC(s,q),180);});
+  inp.addEventListener('keydown',e=>{const items=gD(s).querySelectorAll('.ac-item');if(!items.length){if(e.key==='Enter'&&inp.value.trim().length>=2){e.preventDefault();selectCard(s,inp.value.trim());}return;}if(e.key==='ArrowDown'){e.preventDefault();S.ai[s]=(S.ai[s]+1)%items.length;hlAC(s,items);}else if(e.key==='ArrowUp'){e.preventDefault();S.ai[s]=S.ai[s]<=0?items.length-1:S.ai[s]-1;hlAC(s,items);}else if(e.key==='Enter'){e.preventDefault();S.ai[s]>=0?pickAC(s,S.ai[s]):selectCard(s,inp.value.trim());}else if(e.key==='Escape')closeAC(s);});
+  inp.addEventListener('blur',()=>setTimeout(()=>closeAC(s),150));
+  cl.addEventListener('click',()=>{inp.value='';cl.classList.remove('visible');closeAC(s);clearCard(s);inp.focus();});
+  gS(s).querySelector('.ss-change').addEventListener('click',()=>{clearCard(s);inp.value='';inp.focus();});
+}
+
+async function fetchAC(s,q){try{if(S.ac[s])S.ac[s].abort();S.ac[s]=new AbortController();const r=await fetch(`${API}/cards/autocomplete?q=${encodeURIComponent(q)}`,{signal:S.ac[s].signal});if(!r.ok)return;const d=await r.json();S.sug[s]=d.data||[];renderAC(s,q);}catch(e){if(e.name!=='AbortError')console.error(e);}}
+
+function renderAC(s,q){const dd=gD(s),sg=S.sug[s];if(!sg.length){closeAC(s);return;}const lo=q.toLowerCase();dd.innerHTML=sg.slice(0,8).map((n,i)=>{const x=n.toLowerCase().indexOf(lo);let d=esc(n);if(x!==-1)d=esc(n.slice(0,x))+'<mark>'+esc(n.slice(x,x+q.length))+'</mark>'+esc(n.slice(x+q.length));return`<div class="ac-item" data-i="${i}">${d}</div>`;}).join('');S.ai[s]=-1;dd.classList.add('open');dd.querySelectorAll('.ac-item').forEach(it=>{it.addEventListener('mousedown',e=>{e.preventDefault();pickAC(s,parseInt(it.dataset.i));});});}
+
+function closeAC(s){gD(s).classList.remove('open');gD(s).innerHTML='';S.ai[s]=-1;S.sug[s]=[];}
+function hlAC(s,items){items.forEach((it,i)=>it.classList.toggle('active',i===S.ai[s]));if(S.ai[s]>=0)items[S.ai[s]].scrollIntoView({block:'nearest'});}
+function pickAC(s,i){const n=S.sug[s][i];if(!n)return;gI(s).value=n;gC(s).classList.add('visible');closeAC(s);selectCard(s,n);}
+
+async function selectCard(s,name){if(!name)return;closeAC(s);gE(s).classList.remove('active');const inp=gI(s);inp.disabled=true;try{const r=await fetch(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){const e=await r.json();throw new Error(e.details||'Card not found.');}const card=await r.json();let rul=[];try{const rr=await fetch(card.rulings_uri);if(rr.ok){const rd=await rr.json();rul=rd.data||[];}}catch(e){}S.cards[s]=card;S.rulings[s]=rul;inp.value=card.name;inp.disabled=false;const se=gS(s);se.querySelector('.ss-name').textContent='✓ '+card.name;se.classList.add('active');checkReady();}catch(e){inp.disabled=false;const er=gE(s);er.textContent=e.message;er.classList.add('active');}}
+
+function clearCard(s){S.cards[s]=null;S.rulings[s]=[];gS(s).classList.remove('active');gC(s).classList.remove('visible');gE(s).classList.remove('active');checkReady();resetResults();}
+function resetResults(){document.getElementById('cardsDisplay').classList.remove('active');document.getElementById('cardsDisplay').innerHTML='';document.getElementById('results').classList.remove('active');document.getElementById('results').innerHTML='';document.getElementById('disclaimer').style.display='none';document.getElementById('analyzeWrap').classList.remove('active');}
+function checkReady(){let ok=true;for(let i=1;i<=S.cardCount;i++)if(!S.cards[i]){ok=false;break;}document.getElementById('analyzeWrap').classList.toggle('active',ok);if(ok)renderPanels();}
+
+function renderPanels(){
+  const d=document.getElementById('cardsDisplay');d.className=`cards-display active cards-${S.cardCount}`;d.innerHTML='';
+  for(let i=1;i<=S.cardCount;i++){const c=S.cards[i];const dfc=c.card_faces&&c.card_faces.length>1&&!c.image_uris;const img=dfc?(c.card_faces[0].image_uris?.normal||''):(c.image_uris?.normal||'');const tp=dfc?c.card_faces.map(f=>f.type_line).join(' // '):(c.type_line||'');const mc=dfc?c.card_faces.map(f=>f.mana_cost||'').filter(Boolean).join(' // '):(c.mana_cost||'');const ot=dfc?c.card_faces.map(f=>`${f.name}\n${f.oracle_text||''}`).join('\n---\n'):(c.oracle_text||'');
+  d.innerHTML+=`<div class="card-panel"><div class="card-thumb"><img src="${img}" alt="${esc(c.name)}" loading="lazy"></div><div class="card-meta" style="min-width:0;flex:1"><div class="cm-name">${esc(c.name)} ${mc?`<span class="mana-cost">${parseMana(mc)}</span>`:''}</div><div class="cm-type">${esc(tp)}</div><div class="cm-oracle">${fmtOracle(ot)}</div></div></div>`;}}
+
+document.getElementById('analyzeBtn').addEventListener('click',analyze);
+
+async function analyze(){
+  const btn=document.getElementById('analyzeBtn');btn.disabled=true;btn.textContent='⏳ Analyzing…';
+  const res=document.getElementById('results');res.innerHTML='';res.classList.add('active');document.getElementById('disclaimer').style.display='block';
+  const cards=[];for(let i=1;i<=S.cardCount;i++)cards.push(S.cards[i]);
+
+  res.innerHTML=`
+    <div class="result-section" id="comboSection"><div class="result-section-header"><div class="rs-icon combo">⚡</div><h3>Known Combos</h3></div><div class="analysis-loading"><div class="analysis-spinner" style="border-top-color:var(--gold)"></div><span>Checking Commander Spellbook…</span></div></div>
+    <div class="result-section" id="analysisSection"><div class="result-section-header"><div class="rs-icon analysis">§</div><h3>Rules Interaction Analysis</h3><span class="rs-badge" style="background:rgba(155,124,201,0.1);color:var(--purple);">Rules Engine</span></div><div class="analysis-loading"><div class="analysis-spinner"></div><span>Analyzing rules interactions…</span></div></div>
+    <div class="result-section" id="rulingsSection"><div class="result-section-header"><div class="rs-icon rulings">✦</div><h3>Individual Card Rulings</h3></div>
+      <div class="rulings-columns cols-${S.cardCount}">${cards.map((c,idx)=>`<div class="rulings-col"><h4>${esc(c.name)}</h4>${S.rulings[idx+1].length?S.rulings[idx+1].slice(0,8).map(r=>`<div class="ruling-item"><div class="ruling-date">${r.published_at}</div><div class="ruling-text">${esc(r.comment)}</div></div>`).join(''):'<div class="no-rulings">No rulings found.</div>'}</div>`).join('')}</div></div>`;
+
+  const [combos,analysis]=await Promise.all([checkCombos(cards),getRulesAnalysis(cards)]);
+  renderCombos(combos,cards);renderAnalysis(analysis);
+  btn.disabled=false;btn.textContent='⚔ Analyze Interaction';
+}
+
+// Commander Spellbook
+async function checkCombos(cards){
+  const allResults = [];
+  const seen = new Set();
+  let apiSucceeded = false;
+
+  // Build all queries: full set + all 2-card pairs (for 3+ cards)
+  const queries = [];
+  queries.push(cards.map(c=>`card="${c.name}"`).join(' '));
+  if(cards.length > 2){
+    for(let a=0;a<cards.length;a++) for(let b=a+1;b<cards.length;b++)
+      queries.push(`card="${cards[a].name}" card="${cards[b].name}"`);
+  }
+
+  for(const q of queries){
+    const base=`${SB}/variants/?q=${encodeURIComponent(q)}&limit=8&ordering=popularity`;
+    for(const url of [base,`https://corsproxy.io/?url=${encodeURIComponent(base)}`,`https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`]){
+      try{
+        const ac=new AbortController();const t=setTimeout(()=>ac.abort(),5000);
+        const r=await fetch(url,{headers:{'Accept':'application/json'},signal:ac.signal});
+        clearTimeout(t);if(!r.ok)continue;const d=await r.json();
+        const results=d.results||d.data||[];
+        for(const combo of results){
+          const id=combo.id||JSON.stringify(combo.uses||combo.cards||'').slice(0,80);
+          if(!seen.has(id)){seen.add(id);allResults.push(combo);}
+        }
+        apiSucceeded = true;
+        break; // got results from this proxy, move to next query
+      }catch(e){continue;}
+    }
+  }
+
+  if(allResults.length>0) return allResults.slice(0,8);
+  // Return null only if no API call succeeded at all
+  return apiSucceeded ? [] : null;
+}
+
+function sbURL(cards){return`https://commanderspellbook.com/search/?q=${encodeURIComponent(cards.map(c=>`card="${c.name}"`).join(' '))}`;}
+
+function renderCombos(combos,cards){
+  const sec=document.getElementById('comboSection');if(!sec)return;
+  const url=sbURL(cards),fail=combos===null;if(fail)combos=[];
+  const cn=cards.map(c=>c.name);
+  const badge=combos.length?`<span class="rs-badge badge-found">${combos.length} Found</span>`:fail?`<span class="rs-badge badge-none">API Unavailable</span>`:`<span class="rs-badge badge-none">None Found</span>`;
+  let ct='';
+  if(combos.length){
+    ct=combos.map((combo,ci)=>{
+      const used=(combo.uses||combo.cards||[]).map(u=>u.card?.name||u.name||u).filter(Boolean);
+      const other=used.filter(n=>!cn.includes(n));
+      const prod=(combo.produces||combo.results||[]).map(p=>p.feature?.name||p.name||(typeof p==='string'?p:'')).filter(Boolean);
+      const rawSteps=combo.description||combo.steps||'';
+      const link=combo.id?`https://commanderspellbook.com/combo/${combo.id}/`:url;
+
+      // Parse steps into numbered list
+      const stepLines = (typeof rawSteps==='string'?rawSteps:'').split(/\n|(?<=\.)\s+(?=[A-Z])/).map(s=>s.trim()).filter(s=>s.length>0);
+
+      const title = prod.length ? esc(prod.join(' + ')) : 'Combo';
+
+      return `<div class="combo-result" data-combo="${ci}">
+        <div class="combo-header" onclick="this.parentElement.classList.toggle('open')">
+          <span class="combo-toggle">▶</span>
+          <span class="combo-name">${title}</span>
+          <a href="${link}" target="_blank" rel="noopener" class="combo-link" onclick="event.stopPropagation()">View ↗</a>
+        </div>
+        <div class="combo-body">
+          ${other.length?`<div class="combo-also">Also requires: ${esc(other.join(', '))}</div>`:''}
+          ${stepLines.length?`<ol class="combo-steps-list">${stepLines.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`:'<div class="no-rulings">No steps documented.</div>'}
+        </div>
+      </div>`;
+    }).join('');
+  } else if(fail){
+    ct=`<div class="no-rulings">Could not reach Commander Spellbook. <a href="${url}" target="_blank" style="color:var(--gold);text-decoration:underline;">Search directly ↗</a></div>`;
+  } else {
+    ct=`<div class="no-rulings">No documented combos found. <a href="${url}" target="_blank" style="color:var(--gold);text-decoration:underline;">Check Commander Spellbook ↗</a></div>`;
+  }
+  sec.innerHTML=`<div class="result-section-header"><div class="rs-icon combo">⚡</div><h3>Known Combos</h3>${badge}</div>${ct}<div style="margin-top:0.5rem;text-align:right"><a href="${url}" target="_blank" style="font-family:'Alegreya Sans SC',sans-serif;font-size:0.6rem;color:var(--gold-dim);text-decoration:none;letter-spacing:0.06em">Commander Spellbook ↗</a></div>`;
+}
+
+// Rules Analysis (focused on weird rules interactions, NOT combos)
+async function getRulesAnalysis(cards){
+  try{
+    const info=cards.map((c,i)=>{const dfc=c.card_faces&&c.card_faces.length>1;const txt=dfc?c.card_faces.map(f=>`${f.name}|${f.mana_cost||''}|${f.type_line||''}\n${f.oracle_text||''}`).join('\n---\n'):`${c.name}|${c.mana_cost||''}|${c.type_line||''}\n${c.oracle_text||''}`;const rl=S.rulings[i+1].slice(0,4).map(r=>`[${r.published_at}] ${r.comment}`).join('\n');return`=== CARD ${i+1} ===\n${txt}\n${rl?`Rulings:\n${rl}`:''}`}).join('\n\n');
+    const sys=`You are an expert MTG Level 3 judge. Analyze ONLY rules edge cases and weird interactions. Do NOT explain combos, synergies, or infinite loops — those are handled elsewhere.
+Focus EXCLUSIVELY on: "Can't vs. Can" conflicts (CR 101.2); replacement effect layering (CR 614-616); timestamp/layer dependency (CR 613); static abilities shutting each other off; state-based action quirks; priority/timing edge cases; triggered ability ordering; type-changing interactions; protection/hexproof/shroud issues; "as though" effects; continuous effect layer conflicts.
+Format with **bold** headers: **Rules Edge Cases**, **Layer & Timing Issues**, **Common Mistakes**, **Quick Reference** (CR numbers). If no quirks exist, state they interact straightforwardly.`;
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:`Analyze rules edge cases (NOT combos) for these ${cards.length} MTG cards:\n\n${info}`}]})});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);const d=await r.json();return{type:'remote',text:d.content.map(b=>b.text||'').join('\n')};
+  }catch(e){console.warn('Remote unavailable:',e.message);}
+  return{type:'local',text:localAnalysis(cards)};
+}
+
+function gO(c){return(c.card_faces&&c.card_faces.length>1)?c.card_faces.map(f=>f.oracle_text||'').join('\n'):(c.oracle_text||'');}
+function gT(c){return(c.card_faces&&c.card_faces.length>1)?c.card_faces.map(f=>f.type_line||'').join(' // '):(c.type_line||'');}
+
+function localAnalysis(cards){
+  const os=cards.map(c=>gO(c).toLowerCase()),ts=cards.map(c=>gT(c).toLowerCase()),ns=cards.map(c=>c.name);
+  const findings=[];
+  for(let a=0;a<cards.length;a++)for(let b=a+1;b<cards.length;b++){
+    const oA=os[a],oB=os[b],tA=ts[a],tB=ts[b],nA=ns[a],nB=ns[b];
+
+    // Can't vs Must/Can
+    if(/can't attack/i.test(oA)&&/must attack|attacks? each/i.test(oB))findings.push(`**"Can't vs. Must" — Attack Conflict**: ${nA} prevents attacking while ${nB} forces it. Per CR 101.2, "can't" always wins over "must." Creatures affected by both will not attack.`);
+    if(/can't attack/i.test(oB)&&/must attack|attacks? each/i.test(oA))findings.push(`**"Can't vs. Must" — Attack Conflict**: ${nB} prevents attacking while ${nA} forces it. Per CR 101.2, "can't" always wins.`);
+    if(/can't block/i.test(oA)&&/must block|blocks? each/i.test(oB))findings.push(`**"Can't vs. Must" — Block Conflict**: ${nA} prevents blocking while ${nB} forces it. "Can't" overrides "must" (CR 101.2).`);
+    if(/can't block/i.test(oB)&&/must block|blocks? each/i.test(oA))findings.push(`**"Can't vs. Must" — Block Conflict**: ${nB} prevents blocking while ${nA} forces it. "Can't" wins (CR 101.2).`);
+    if(/can't (cast|play)/i.test(oA)&&/may cast|you may play|without paying/i.test(oB))findings.push(`**"Can't vs. Permission" — Cast Conflict**: ${nA} prevents casting while ${nB} grants permission. "Can't" wins (CR 101.2). The permission from ${nB} is overridden.`);
+    if(/can't (cast|play)/i.test(oB)&&/may cast|you may play|without paying/i.test(oA))findings.push(`**"Can't vs. Permission" — Cast Conflict**: ${nB} prevents casting while ${nA} grants permission. "Can't" wins (CR 101.2).`);
+    if(/can't (gain life|draw)/i.test(oA)&&/(gain|draw)/i.test(oB))findings.push(`**Restriction Override**: ${nA} prevents an action that ${nB} tries to perform. The restriction from ${nA} takes precedence (CR 101.2).`);
+    if(/can't (gain life|draw)/i.test(oB)&&/(gain|draw)/i.test(oA))findings.push(`**Restriction Override**: ${nB} prevents an action that ${nA} tries to perform. The restriction wins (CR 101.2).`);
+    if(/skip.*untap/i.test(oA)&&/untap.*during/i.test(oB))findings.push(`**Skip vs. Untap**: ${nA} skips the untap step while ${nB} references untapping during it. If the step is skipped entirely, ${nB}'s untap trigger won't occur.`);
+    if(/skip.*untap/i.test(oB)&&/untap.*during/i.test(oA))findings.push(`**Skip vs. Untap**: ${nB} skips the untap step while ${nA} references it. The step is skipped entirely.`);
+
+    // Replacement effect conflicts
+    const aR=/if.*would.*instead|as.*enters.*battlefield.*choose|enters.*as/i.test(oA),bR=/if.*would.*instead|as.*enters.*battlefield.*choose|enters.*as/i.test(oB);
+    if(aR&&bR)findings.push(`**Replacement Effect Ordering**: Both ${nA} and ${nB} have replacement effects. When multiple apply to the same event, the affected player chooses the order (CR 616.1). After one applies, re-check if the other still applies — the event may have changed.`);
+
+    // Protection vs targeting
+    if(/protection from/i.test(oA)&&/target/i.test(oB))findings.push(`**Protection vs. Targeting**: ${nA} grants protection, preventing ${nB} from targeting, dealing damage to, blocking, or being attached to protected permanents (CR 702.16). Verify the protection's scope.`);
+    if(/protection from/i.test(oB)&&/target/i.test(oA))findings.push(`**Protection vs. Targeting**: ${nB} grants protection that may prevent ${nA}'s targeted effects (CR 702.16).`);
+
+    // Hexproof/Shroud
+    if((/hexproof/i.test(oA)||/hexproof/i.test(tA))&&/target/i.test(oB))findings.push(`**Hexproof Note**: ${nA} has or grants hexproof. Opponents can't target it with ${nB}'s abilities. However, effects that don't say "target" still work, and the controller can still target their own hexproof creatures (unlike shroud). CR 702.11.`);
+    if((/shroud/i.test(oA)||/shroud/i.test(tA))&&/target/i.test(oB))findings.push(`**Shroud Note**: ${nA} has shroud — NO player (including its controller) can target it. This is stricter than hexproof (CR 702.18).`);
+
+    // Indestructible vs destroy
+    if((/indestructible/i.test(oA)||/indestructible/i.test(tA))&&/destroy/i.test(oB))findings.push(`**Indestructible vs. Destroy**: ${nA} is indestructible. ${nB}'s destroy effects won't remove it (CR 702.12). However, exile, sacrifice, -X/-X, and "put into graveyard" effects bypass indestructible.`);
+    if((/indestructible/i.test(oB)||/indestructible/i.test(tB))&&/destroy/i.test(oA))findings.push(`**Indestructible vs. Destroy**: ${nB} is indestructible. ${nA}'s destroy effects won't affect it. Use exile, sacrifice, or toughness reduction instead (CR 702.12).`);
+
+    // Ability removal / Layer 6
+    if(/loses? all abilities/i.test(oA))findings.push(`**Ability Removal (Layer 6)**: ${nA} removes abilities. This can shut off ${nB}'s activated, triggered, and static abilities. Apply in Layer 6, using timestamp order for conflicts (CR 613.7).`);
+    if(/loses? all abilities/i.test(oB))findings.push(`**Ability Removal (Layer 6)**: ${nB} removes abilities, which can disable ${nA}. Layer 6 rules apply (CR 613.7).`);
+
+    // Copy + type-change layers
+    if(/copy|clone|becomes? a copy/i.test(oA)&&/becomes? a|is a.*in addition|loses? all/i.test(oB))findings.push(`**Copy + Type-Change Layer Issue**: Copy effects (Layer 1) apply before type-changes (Layer 4). ${nA}'s copy sets base characteristics, then ${nB}'s type modifications apply on top (CR 613.1).`);
+
+    // Sacrifice vs indestructible
+    if(/sacrifice/i.test(oA)&&/indestructible/i.test(oB))findings.push(`**Sacrifice bypasses Indestructible**: ${nA} can force sacrifice of ${nB} despite indestructible. Sacrifice is not destruction (CR 701.17).`);
+    if(/sacrifice/i.test(oB)&&/indestructible/i.test(oA))findings.push(`**Sacrifice bypasses Indestructible**: ${nB} can sacrifice ${nA} regardless of indestructible (CR 701.17).`);
+
+    // Multiple triggered abilities
+    const at=(oA.match(/when(ever)?/g)||[]).length,bt=(oB.match(/when(ever)?/g)||[]).length;
+    if(at>=2&&bt>=2)findings.push(`**Trigger Stacking**: Both cards have multiple triggers. When simultaneous, you choose stack order (CR 603.3b). Last placed resolves first — order strategically.`);
+  }
+
+  let out='';
+  if(!findings.length){
+    out+=`**Rules Edge Cases**\nNo unusual rules interactions detected between ${ns.join(', ')}. These cards interact straightforwardly.\n\n`;
+    out+=`**General Tips**\n• Check triggered ability ordering when both trigger simultaneously\n• Verify replacement effect priority if both modify the same event\n• Static abilities apply continuously and don't use the stack (CR 604.1)\n\n`;
+  }else{
+    out+=`**Rules Edge Cases Found: ${findings.length}**\n\n`;
+    out+=findings.join('\n\n')+'\n\n';
+  }
+  out+=`---\n*Analysis by the rules pattern engine. Detects "can't vs. can," replacement effect conflicts, protection/hexproof issues, layer interactions, and more. For complex scenarios, consult the Comprehensive Rules or a judge.*`;
+  return out;
+}
+
+function renderAnalysis(result){
+  const sec=document.getElementById('analysisSection');if(!sec)return;
+  const raw=typeof result==='object'?result.text:result;
+  const fmt=esc(raw).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:0.7rem 0;">');
+  sec.innerHTML=`<div class="result-section-header"><div class="rs-icon analysis">§</div><h3>Rules Interaction Analysis</h3><span class="rs-badge" style="background:rgba(155,124,201,0.1);color:var(--purple);">Rules Engine</span></div><div class="analysis-text">${fmt}</div>`;
+}
+
+// Utilities
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function parseMana(c){if(!c)return'';return(c.match(/\{[^}]+\}/g)||[]).map(s=>{const v=s.replace(/[{}]/g,'');let cl='mana-generic';if('WUBRGC'.includes(v)&&v.length===1)cl=`mana-${v}`;return`<span class="mana-symbol ${cl}">${v}</span>`;}).join('');}
+function fmtOracle(t){if(!t)return'';return esc(t).replace(/\{([^}]+)\}/g,(_,v)=>{let c='mana-generic';if('WUBRGC'.includes(v)&&v.length===1)c=`mana-${v}`;return`<span class="mana-symbol ${c}" style="width:13px;height:13px;font-size:0.48rem;vertical-align:middle">${v}</span>`;}).replace(/\(([^)]+)\)/g,'<i>($1)</i>');}
+
+buildSlots();
+</script>
+</body>
+</html>
